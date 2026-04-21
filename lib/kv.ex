@@ -7,11 +7,13 @@ defmodule KV do
   # The @impl true annotation says we are implementing a callback
   @impl true
   def start(_type, _args) do
+    port = Application.fetch_env!(:kv, :port)
+
     children = [
       {Registry, name: KV, keys: :unique},
       {DynamicSupervisor, name: KV.BucketSupervisor, strategy: :one_for_one},
       {Task.Supervisor, name: KV.ServerSupervisor},
-      Supervisor.child_spec({Task, fn -> KV.Server.accept(4040) end}, restart: :permanent)
+      Supervisor.child_spec({Task, fn -> KV.Server.accept(port) end}, restart: :permanent)
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)

@@ -12,6 +12,7 @@ defmodule KV.MixProject do
   end
 
   # Run "mix help compile.app" to learn about applications.
+  # Remove :wx, :observer from extra_applications in production.
   def application do
     [
       extra_applications: [:logger, :wx, :observer],
