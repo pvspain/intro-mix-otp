@@ -32,6 +32,7 @@ defmodule KV.Command do
 
   def parse(line) do
     case String.split(line) do
+      ["SUBSCRIBE", bucket] -> {:ok, {:subscribe, bucket}}
       ["CREATE", bucket] -> {:ok, {:create, bucket}}
       ["GET", bucket, key] -> {:ok, {:get, bucket, key}}
       ["PUT", bucket, key, value] -> {:ok, {:put, bucket, key, value}}
@@ -73,6 +74,33 @@ defmodule KV.Command do
       :gen_tcp.send(socket, "OK\r\n")
       :ok
     end)
+  end
+
+  def run({:subscribe, bucket}, socket) do
+    lookup(bucket, fn pid ->
+      KV.Bucket.subscribe(pid)
+      :inet.setopts(socket, active: true)
+      receive_messages(socket)
+    end)
+  end
+
+  defp receive_messages(socket) do
+    receive do
+      {:put, key, value} ->
+        :gen_tcp.send(socket, "#{key} SET TO #{value}\r\n")
+        receive_messages(socket)
+
+      {:delete, key} ->
+        :gen_tcp.send(socket, "#{key} DELETED\r\n")
+        receive_messages(socket)
+
+      {:tcp_closed, ^socket} ->
+        {:error, :closed}
+
+      # If we receive any message, including socket writes, we discard them
+      _ ->
+        receive_messages(socket)
+    end
   end
 
   defp lookup(bucket, callback) do
