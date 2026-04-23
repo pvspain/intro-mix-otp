@@ -23,4 +23,16 @@ defmodule KV.BucketTest do
     assert KV.Bucket.delete(bucket, "milk") == 4
     assert KV.Bucket.get(bucket, "milk") == nil
   end
+
+  test "subscribes to puts and deletes" do
+    {:ok, bucket} = start_supervised(KV.Bucket)
+    KV.Bucket.subscribe(bucket)
+
+    KV.Bucket.put(bucket, "milk", 3)
+    assert_receive {:put, "milk", 3}
+
+    # Also check it works even from another process
+    spawn(fn -> KV.Bucket.delete(bucket, "milk") end)
+    assert_receive {:delete, "milk"}
+  end
 end
